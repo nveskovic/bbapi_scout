@@ -8,7 +8,9 @@ from bb_api_scout import bbapi_methods
 
 
 ###### Main actions ######
-s = bbapi_methods.login()
+username = "username here"
+bb_token = "bbapi token (access token) here"
+s = bbapi_methods.login(username, bb_token)
 
 leagues = bbapi_methods.get_list_of_league_ids(s, country_id=1, levels=[1, 2, 3, 4])
 teams = bbapi_methods.get_list_of_non_bot_teams(s, league_ids=leagues)
