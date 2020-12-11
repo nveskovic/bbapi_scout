@@ -4,21 +4,20 @@ from random import randint
 import collections
 
 import requests
-import xmltodict, json
+import xmltodict
+import json
 from time import sleep
 
 
 base_url = "http://bbapi.buzzerbeater.com/"
-username = <username here>
-bb_token = <access TOKEN here>
 
 ### Sleep settings ###
 use_random_sleeps = True
-min_sleep = 2  # seconds
-max_sleep = 3  # seconds
+min_sleep = 0  # seconds
+max_sleep = 1  # seconds
 
 
-def login():
+def login(username, bb_token):
     s = requests.Session()
     url = base_url + "login.aspx?login=" + username + "&code=" + bb_token
     payload = {}
@@ -125,13 +124,14 @@ def get_list_of_players(s, team_ids=[], age_pattern=".*", min_potential=6,
         # some teams have only 1 player in the roster.
         # Check if that is the case and handle it specially
         roster = []
-        if type(o["bbapi"]["roster"]["player"]) is collections.OrderedDict:
-            # Single player rosters
-            roster.append(o["bbapi"]["roster"]["player"])
-        elif type(o["bbapi"]["roster"]["player"]) is list:
-            # Multi player rosters
-            roster = o["bbapi"]["roster"]["player"]
-        else:
+        try:
+            if type(o["bbapi"]["roster"]["player"]) is collections.OrderedDict:
+                # Single player rosters
+                roster.append(o["bbapi"]["roster"]["player"])
+            elif type(o["bbapi"]["roster"]["player"]) is list:
+                # Multi player rosters
+                roster = o["bbapi"]["roster"]["player"]
+        except:
             sys.stderr.write("Not able to process roster {}\n".format(o))
 
         try:
@@ -150,15 +150,47 @@ def get_list_of_players(s, team_ids=[], age_pattern=".*", min_potential=6,
     return players
 
 
+def get_players(s, ids):
+    # player.aspx?playerid=43251670
+    players = []
+    total = len(ids)
+    current = 0
+
+    for player_id in ids:
+
+        if use_random_sleeps:
+            sec = randint(min_sleep, max_sleep)
+            sleep(sec)
+
+        url = base_url + "player.aspx?playerid=" + str(
+            player_id)
+        response = s.get(url)
+        o = xmltodict.parse(response.text.encode('utf8'))
+
+        current += 1
+        progress_bar(
+            "Getting players: Current player: {}".format(player_id),
+            current, total)
+
+        try:
+            players.append(json.dumps(o["bbapi"]["player"]))
+        except:
+            sys.stderr.write("Not able to process player {}\n".format(o))
+            continue
+
+    return players
+
+
 def save_players_to_tsv_file(players={}, file_path="players.tsv"):
 
     # format of player data
     # {"@id": "48638388", "firstName": "Igor", "lastName": "Bo\u0161i\u0107", "nationality": {"@id": "29", "#text": "Srbija"}, "age": "19", "height": "81", "dmi": "14000", "salary": "2618", "bestPosition": "C", "seasonDrafted": "50", "leagueDrafted": "1277", "teamDrafted": "42733", "draftPick": "16", "forSale": "0", "skills": {"gameShape": "7", "potential": "9"}}
+    # {"@id": "48315767", "firstName": "Dragan", "lastName": "Preradovi\u0107", "nationality": {"@id": "29", "#text": "Srbija"}, "age": "19", "height": "82", "dmi": "196800", "salary": "6602", "bestPosition": "C", "seasonDrafted": "49", "leagueDrafted": "1281", "teamDrafted": "100575", "draftPick": "4", "forSale": "0", "skills": {"gameShape": "9", "potential": "9"}}
 
     player_base_url = "https://www2.buzzerbeater.com/player/"
 
     f = open(file_path, "w", encoding="UTF8")
-    f.write("{}\tcountry\tsalary\tage\tpot\theight\tdmi\tseasonDrafted\tforSale" + "\n".format(player_base_url))
+    f.write("{}\tcountry\tsalary\tage\tpot\theight\tdmi\tseasonDrafted\tforSale".format(player_base_url) + "\n")
     for player in players:
         player_json = json.loads(player, encoding="utf8")
 
