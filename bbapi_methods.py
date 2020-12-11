@@ -13,8 +13,8 @@ base_url = "http://bbapi.buzzerbeater.com/"
 
 ### Sleep settings ###
 use_random_sleeps = True
-min_sleep = 0  # seconds
-max_sleep = 1  # seconds
+min_sleep = 2  # seconds
+max_sleep = 4  # seconds
 
 
 def login(username, bb_token):
