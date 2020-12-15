@@ -23,8 +23,14 @@ def login(username, bb_token):
     payload = {}
     headers = {}
     response = s.get(url, headers=headers, data=payload)
+    o = xmltodict.parse(response.text.encode('utf8'))
+    try:
+        result = o["bbapi"]["loggedIn"]  # if there is loggedIn all is ok
+        return s
+    except:
+        sys.stderr.write("Not able to login to bbapi. {}\n".format(o))
+        exit(1)
 
-    return s
 
 
 def get_list_of_countries_and_league_levels(s):
@@ -71,7 +77,14 @@ def get_list_of_league_ids(s, country_id=29, levels=[1, 2, 3]):
 
 
 def get_list_of_non_bot_teams(s, league_ids=[]):
+    return get_list_of_teams(s, league_ids, params={"include_bots": False, "include_active": True})
+
+
+def get_list_of_teams(s, league_ids=[], params={"include_bots": False, "include_active": True}):
     team_ids = []
+    include_bots = params["include_bots"]
+    include_active = params["include_active"]
+
     total = len(league_ids)
     current = 0
     for league_id in league_ids:
@@ -94,8 +107,11 @@ def get_list_of_non_bot_teams(s, league_ids=[]):
         for conference in o["bbapi"]["standings"]["regularSeason"][
             "conference"]:
             for team in conference["team"]:
-                if team['isBot'] == '0':
+                if team['isBot'] == '0' and include_active:
                     team_ids.append(team['@id'])
+                elif team['isBot'] == '1' and include_bots:
+                    team_ids.append(team['@id'])
+
     return team_ids
 
 
@@ -191,6 +207,7 @@ def save_players_to_tsv_file(players={}, file_path="players.tsv"):
 
     f = open(file_path, "w", encoding="UTF8")
     f.write("{}\tcountry\tsalary\tage\tpot\theight\tdmi\tseasonDrafted\tforSale".format(player_base_url) + "\n")
+
     for player in players:
         player_json = json.loads(player, encoding="utf8")
 

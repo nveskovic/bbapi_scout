@@ -18,7 +18,7 @@ bb_token = "bbapi token (access token) here"
 s = bbapi_methods.login(username, bb_token)
 
 # 2. Do some actions
-leagues = bbapi_methods.get_list_of_league_ids(s, country_id=1, levels=[1, 2, 3, 4])
+leagues = bbapi_methods.get_list_of_league_ids(s, country_id=29, levels=[1, 2, 3, 4])
 teams = bbapi_methods.get_list_of_non_bot_teams(s, league_ids=leagues)
 
 # to filter by nationality IDs, you need to use a regular expression
@@ -31,17 +31,17 @@ teams = bbapi_methods.get_list_of_non_bot_teams(s, league_ids=leagues)
 # )
 
 # save list of teams to file so that the script can run in chunks
-teams_file = open("all_teams.txt", "w", encoding="UTF8")
-teams_file.write(teams)
-teams_file.write("\n")
-teams_file.close()
+# teams_file = open("all_serbian_teams.txt", "w", encoding="UTF8")
+# teams_file.write(str(teams))
+# teams_file.write("\n")
+# teams_file.close()q
 
 players = bbapi_methods.get_list_of_players(
     s, team_ids=teams,
-    age_pattern="[2-3][0-9]",
-    min_potential=8,
-    country_id_pattern=".*",
-    min_salary=80000
+    age_pattern="18|19",
+    min_potential=0,
+    country_id_pattern="29",
+    min_salary=0
 )
 
 
@@ -51,4 +51,4 @@ url = "http://bbapi.buzzerbeater.com/logout.aspx"
 s.get(url)
 
 # Additional: do some more actions like writing to a file or similar
-bbapi_methods.save_players_to_tsv_file(players=players, file_path="players2.tsv")
+bbapi_methods.save_players_to_tsv_file(players=players, file_path="serbia_draft_51_lige_IV.tsv")
