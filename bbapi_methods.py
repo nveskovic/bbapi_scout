@@ -12,9 +12,9 @@ from time import sleep
 base_url = "http://bbapi.buzzerbeater.com/"
 
 ### Sleep settings ###
-use_random_sleeps = True
-min_sleep = 2  # seconds
-max_sleep = 4  # seconds
+use_random_sleeps = False
+min_sleep = 0  # seconds
+max_sleep = 1  # seconds
 
 
 def login(username, bb_token):
@@ -73,6 +73,8 @@ def get_list_of_league_ids(s, country_id=29, levels=[1, 2, 3]):
         # end for
     # end for
 
+    # sys.stdout.write("For country ID:{} and divisions:{} found {} league(s).\n"
+    #                  .format(country_id, str(levels), len(league_ids)))
     return league_ids
 
 
@@ -87,30 +89,33 @@ def get_list_of_teams(s, league_ids=[], params={"include_bots": False, "include_
 
     total = len(league_ids)
     current = 0
+
     for league_id in league_ids:
+        try:
+            if use_random_sleeps:
+                sec = randint(min_sleep, max_sleep)
+                # print("Sleeping {} seconds...".format(sec))
+                sleep(sec)
 
-        if use_random_sleeps:
-            sec = randint(min_sleep, max_sleep)
-            # print("Sleeping {} seconds...".format(sec))
-            sleep(sec)
+            current += 1
+            progress_bar(
+                "Getting teams from leagues. Current league: {}".format(league_id),
+                current, total)
 
-        current += 1
-        progress_bar(
-            "Getting teams from leagues. Current league: {}".format(league_id),
-            current, total)
-
-        url = base_url + "standings.aspx?leagueid=" + str(
-            league_id)
-        response = s.get(url)
-        o = xmltodict.parse(response.text.encode('utf8'))
-        # loop through conferences
-        for conference in o["bbapi"]["standings"]["regularSeason"][
-            "conference"]:
-            for team in conference["team"]:
-                if team['isBot'] == '0' and include_active:
-                    team_ids.append(team['@id'])
-                elif team['isBot'] == '1' and include_bots:
-                    team_ids.append(team['@id'])
+            url = base_url + "standings.aspx?leagueid=" + str(
+                league_id)
+            response = s.get(url)
+            o = xmltodict.parse(response.text.encode('utf8'))
+            # loop through conferences
+            for conference in o["bbapi"]["standings"]["regularSeason"][
+                "conference"]:
+                for team in conference["team"]:
+                    if team['isBot'] == '0' and include_active:
+                        team_ids.append(team['@id'])
+                    elif team['isBot'] == '1' and include_bots:
+                        team_ids.append(team['@id'])
+        except:
+            sys.stderr.write("Not able to process league id:{}, {}\n".format(league_id, response.content))
 
     return team_ids
 
@@ -233,6 +238,51 @@ def save_players_to_tsv_file(players={}, file_path="players.tsv"):
 
     # close the file
     f.close()
+
+
+def save_players_to_tsv_files_by_country(players=[], file_name_prefix="players_by_country"):
+    # format of player data
+    # {"@id": "48638388", "firstName": "Igor", "lastName": "Bo\u0161i\u0107", "nationality": {"@id": "29", "#text": "Srbija"}, "age": "19", "height": "81", "dmi": "14000", "salary": "2618", "bestPosition": "C", "seasonDrafted": "50", "leagueDrafted": "1277", "teamDrafted": "42733", "draftPick": "16", "forSale": "0", "skills": {"gameShape": "7", "potential": "9"}}
+    # {"@id": "48315767", "firstName": "Dragan", "lastName": "Preradovi\u0107", "nationality": {"@id": "29", "#text": "Srbija"}, "age": "19", "height": "82", "dmi": "196800", "salary": "6602", "bestPosition": "C", "seasonDrafted": "49", "leagueDrafted": "1281", "teamDrafted": "100575", "draftPick": "4", "forSale": "0", "skills": {"gameShape": "9", "potential": "9"}}
+
+    player_base_url = "https://www2.buzzerbeater.com/player/"
+
+    out_files = {}
+    for player in players:
+        player_json = json.loads(player, encoding="utf8")
+        nationality_id = player_json["nationality"]["@id"]
+
+        f = out_files.get(nationality_id, None)
+        if f is None:
+            f = open(file_name_prefix + "_{}.tsv".format(nationality_id), "w", encoding="UTF8")
+            f.write(
+                "{}\tcountry\tsalary\tage\tpot\theight\tdmi\tseasonDrafted\tforSale".format(
+                    player_base_url) + "\n")
+            out_files.update({nationality_id: f})
+
+        gsheets_link = \
+            "=HYPERLINK(CONCATENATE($A$1, \"{}\", \"/overview.aspx\"),\"{} {}\")".format(
+                player_json["@id"],
+                player_json["firstName"],
+                player_json["lastName"]
+            )
+        f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
+            # player_json["@id"],
+            gsheets_link,
+            player_json["nationality"]["#text"],
+            player_json["salary"],
+            player_json["age"],
+            player_json["skills"]["potential"],
+            # height is in inches and we are saving in cm: 1 in = 2.54 cm
+            int(round(int(player_json["height"]) * 2.54, 0)),
+            player_json["dmi"],
+            player_json["seasonDrafted"],
+            player_json["forSale"]
+        ))
+
+    # close opened files
+    for key, file in out_files.items():
+        out_files.get(key).close()
 
 
 def progress_bar(title, current, total, bar_length=20):
