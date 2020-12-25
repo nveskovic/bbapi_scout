@@ -8,6 +8,8 @@ import xmltodict
 import json
 from time import sleep
 
+from datetime import datetime
+
 
 base_url = "http://bbapi.buzzerbeater.com/"
 
@@ -79,10 +81,60 @@ def get_list_of_league_ids(s, country_id=29, levels=[1, 2, 3]):
 
 
 def get_list_of_non_bot_teams(s, league_ids=[]):
-    return get_list_of_teams(s, league_ids, params={"include_bots": False, "include_active": True})
+    return get_list_of_teams(
+        s, league_ids,
+        params={
+            "include_bots": False,
+            "include_active": True
+        })
 
 
-def get_list_of_teams(s, league_ids=[], params={"include_bots": False, "include_active": True}):
+def get_list_of_teams_registered_from(s, league_ids, registered_from="1970-01-01"):
+    date_registered_from = datetime.strptime(registered_from, '%Y-%m-%d')
+    team_ids = get_list_of_non_bot_teams(s, league_ids=league_ids)
+    teams_to_return = []
+
+    total = len(team_ids)
+    current = 0
+
+    # filter the teams that are registered after the date
+    for team_id in team_ids:
+        try:
+            if use_random_sleeps:
+                sec = randint(min_sleep, max_sleep)
+                # print("Sleeping {} seconds...".format(sec))
+                sleep(sec)
+
+            current += 1
+            progress_bar(
+                "Getting teams registered after {}. Checking team: {}".format(registered_from, team_id),
+                current, total)
+
+            url = base_url + "teaminfo.aspx?teamid=" + str(
+                team_id)
+            response = s.get(url)
+            o = xmltodict.parse(response.text.encode('utf8'))
+
+            create_date = o["bbapi"]["team"]["createDate"]
+            team_registered_at = datetime.strptime(
+                create_date,
+                '%Y-%m-%dT%H:%M:%SZ')
+
+            if date_registered_from <= team_registered_at:
+                teams_to_return.append(team_id)
+        except:
+            sys.stderr.write("Not able to process teaminfo for team id:{}, {}\n".format(team_id, response.content))
+
+    return teams_to_return
+
+
+def get_list_of_teams(
+        s, league_ids=[],
+        params={
+            "include_bots": False,
+            "include_active": True
+        }
+):
     team_ids = []
     include_bots = params["include_bots"]
     include_active = params["include_active"]
