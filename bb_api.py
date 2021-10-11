@@ -1,22 +1,19 @@
-import re
 import sys
 from random import randint
-import collections
+from time import sleep
 
 import requests
 import xmltodict
-import json
-from time import sleep
-
-from datetime import datetime
-
 
 base_url = "http://bbapi.buzzerbeater.com/"
 
-### Sleep settings ###
-use_random_sleeps = False
-min_sleep = 0  # seconds
-max_sleep = 1  # seconds
+###############################################################################
+# Sleep settings
+# !!!! DO NOT CHANGE THIS CONFIG as BB admins might close your account !!!
+use_random_sleeps = True
+min_sleep = 1  # seconds
+max_sleep = 2  # seconds
+###############################################################################
 
 
 def login(username, bb_token):
@@ -34,11 +31,24 @@ def login(username, bb_token):
         exit(1)
 
 
+def teaminfo(s, teamid):
+    url = base_url + "teaminfo.aspx?teamid={}".format(teamid)
+    response = _get_(s, url)
+    o = xmltodict.parse(response.text.encode('utf8'))
+    return o["bbapi"]["team"]
+
+
+def player(s, playerid):
+    url = base_url + "player.aspx?playerid={}".format(playerid)
+    response = _get_(s, url)
+    o = xmltodict.parse(response.text.encode('utf8'))
+    return o["bbapi"]["player"]
+
 
 def get_list_of_countries_and_league_levels(s):
     countries = []
     url = base_url + "countries.aspx"
-    response = s.get(url)
+    response = s._get_(url)
     o = xmltodict.parse(response.text.encode('utf8'))
     for country in o["bbapi"]["countries"]["country"]:
         countries.append(country)
@@ -62,7 +72,7 @@ def get_list_of_league_ids(s, country_id=29, levels=[1, 2, 3]):
 
         url = base_url + "leagues.aspx?countryid=" + str(
             country_id) + "&level=" + str(level)
-        response = s.get(url)
+        response = s._get_(url)
         o = xmltodict.parse(response.text.encode('utf8'))
         num_of_leagues_found = len(o["bbapi"]["division"]["league"])
         if num_of_leagues_found <= 2:
@@ -112,7 +122,7 @@ def get_list_of_teams_registered_from(s, league_ids, registered_from="1970-01-01
 
             url = base_url + "teaminfo.aspx?teamid=" + str(
                 team_id)
-            response = s.get(url)
+            response = s._get_(url)
             o = xmltodict.parse(response.text.encode('utf8'))
 
             create_date = o["bbapi"]["team"]["createDate"]
@@ -156,7 +166,7 @@ def get_list_of_teams(
 
             url = base_url + "standings.aspx?leagueid=" + str(
                 league_id)
-            response = s.get(url)
+            response = s._get_(url)
             o = xmltodict.parse(response.text.encode('utf8'))
             # loop through conferences
             for conference in o["bbapi"]["standings"]["regularSeason"][
@@ -186,7 +196,7 @@ def get_list_of_players(s, team_ids=[], age_pattern=".*", min_potential=6,
 
         url = base_url + "roster.aspx?teamid=" + str(
             team_id)
-        response = s.get(url)
+        response = s._get_(url)
         o = xmltodict.parse(response.text.encode('utf8'))
 
         current += 1
@@ -237,7 +247,7 @@ def get_players(s, ids):
 
         url = base_url + "player.aspx?playerid=" + str(
             player_id)
-        response = s.get(url)
+        response = s._get_(url)
         o = xmltodict.parse(response.text.encode('utf8'))
 
         current += 1
@@ -348,3 +358,11 @@ def progress_bar(title, current, total, bar_length=20):
     sys.stdout.flush()
     if percent == 100:
         sys.stdout.write("\n")
+
+
+def _get_(s, url):
+    if use_random_sleeps:
+        sec = randint(min_sleep, max_sleep)
+        sleep(sec)
+
+    return s.get(url)
