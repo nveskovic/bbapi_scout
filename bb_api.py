@@ -48,7 +48,7 @@ def player(s, playerid):
 def get_list_of_countries_and_league_levels(s):
     countries = []
     url = base_url + "countries.aspx"
-    response = s._get_(url)
+    response = _get_(s, url)
     o = xmltodict.parse(response.text.encode('utf8'))
     for country in o["bbapi"]["countries"]["country"]:
         countries.append(country)
@@ -72,7 +72,7 @@ def get_list_of_league_ids(s, country_id=29, levels=[1, 2, 3]):
 
         url = base_url + "leagues.aspx?countryid=" + str(
             country_id) + "&level=" + str(level)
-        response = s._get_(url)
+        response = _get_(s, url)
         o = xmltodict.parse(response.text.encode('utf8'))
         num_of_leagues_found = len(o["bbapi"]["division"]["league"])
         if num_of_leagues_found <= 2:
@@ -122,7 +122,7 @@ def get_list_of_teams_registered_from(s, league_ids, registered_from="1970-01-01
 
             url = base_url + "teaminfo.aspx?teamid=" + str(
                 team_id)
-            response = s._get_(url)
+            response = _get_(s, url)
             o = xmltodict.parse(response.text.encode('utf8'))
 
             create_date = o["bbapi"]["team"]["createDate"]
@@ -166,7 +166,7 @@ def get_list_of_teams(
 
             url = base_url + "standings.aspx?leagueid=" + str(
                 league_id)
-            response = s._get_(url)
+            response = _get_(s, url)
             o = xmltodict.parse(response.text.encode('utf8'))
             # loop through conferences
             for conference in o["bbapi"]["standings"]["regularSeason"][
@@ -196,7 +196,7 @@ def get_list_of_players(s, team_ids=[], age_pattern=".*", min_potential=6,
 
         url = base_url + "roster.aspx?teamid=" + str(
             team_id)
-        response = s._get_(url)
+        response = _get_(s, url)
         o = xmltodict.parse(response.text.encode('utf8'))
 
         current += 1
@@ -247,7 +247,7 @@ def get_players(s, ids):
 
         url = base_url + "player.aspx?playerid=" + str(
             player_id)
-        response = s._get_(url)
+        response = _get_(s, url)
         o = xmltodict.parse(response.text.encode('utf8'))
 
         current += 1
